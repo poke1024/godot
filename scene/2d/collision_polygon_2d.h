@@ -36,49 +36,24 @@
 
 class CollisionObject2D;
 
-class CollisionPolygon2D : public Node2D, public EditablePolygon2D {
+class CollisionPolygon2D : public EditablePolygon2D {
 
-	GDCLASS(CollisionPolygon2D, Node2D);
-
-public:
-	enum BuildMode {
-		BUILD_SOLIDS,
-		BUILD_SEGMENTS,
-	};
+	GDCLASS(CollisionPolygon2D, EditablePolygon2D);
 
 protected:
 	Rect2 aabb;
-	BuildMode build_mode;
 	Vector<Point2> polygon;
-	uint32_t owner_id;
-	CollisionObject2D *parent;
-	bool disabled;
-	bool one_way_collision;
-
-	Vector<Vector<Vector2> > _decompose_in_convex();
-
-	void _build_polygon();
 
 protected:
-	void _notification(int p_what);
 	static void _bind_methods();
 
 public:
-	void set_build_mode(BuildMode p_mode);
-	BuildMode get_build_mode() const;
+	Vector<Vector<Vector2> > _decompose_in_convex();
 
 	void set_polygon(const Vector<Point2> &p_polygon);
 	Vector<Point2> get_polygon() const;
 
 	virtual Rect2 get_item_rect() const;
-
-	virtual String get_configuration_warning() const;
-
-	void set_disabled(bool p_disabled);
-	bool is_disabled() const;
-
-	void set_one_way_collision(bool p_enable);
-	bool is_one_way_collision_enabled() const;
 
 	virtual int edit_get_polygon_count() const;
 	virtual Vector<Vector2> edit_get_polygon(int p_polygon) const;
@@ -92,6 +67,50 @@ public:
 	CollisionPolygon2D();
 };
 
-VARIANT_ENUM_CAST(CollisionPolygon2D::BuildMode);
+class CollisionPolygon2DInstance : public Node2D {
+
+	GDCLASS(CollisionPolygon2DInstance, Node2D);
+
+public:
+	enum BuildMode {
+		BUILD_SOLIDS,
+		BUILD_SEGMENTS,
+	};
+
+protected:
+	Ref<CollisionPolygon2D> polygon;
+	CollisionObject2D *parent;
+	uint32_t owner_id;
+	BuildMode build_mode;
+	bool disabled;
+	bool one_way_collision;
+
+	void _build_polygon();
+	void _polygon_changed();
+
+protected:
+	void _notification(int p_what);
+	static void _bind_methods();
+
+public:
+	void set_polygon(const Ref<CollisionPolygon2D> &p_polygon);
+	Ref<CollisionPolygon2D> get_polygon() const;
+
+	void set_build_mode(BuildMode p_mode);
+	BuildMode get_build_mode() const;
+
+	void set_disabled(bool p_disabled);
+	bool is_disabled() const;
+
+	void set_one_way_collision(bool p_enable);
+	bool is_one_way_collision_enabled() const;
+
+	virtual String get_configuration_warning() const;
+	virtual Rect2 get_item_rect() const;
+
+	CollisionPolygon2DInstance();
+};
+
+VARIANT_ENUM_CAST(CollisionPolygon2DInstance::BuildMode);
 
 #endif // COLLISION_POLYGON_2D_H

@@ -104,6 +104,7 @@ class Polygon2DEditor : public AbstractPolygon2DEditor {
 
 protected:
 	virtual EditablePolygon2D *_get_editable(Node *p_node) const;
+	virtual void _create_res();
 
 	void _notification(int p_what);
 	static void _bind_methods();

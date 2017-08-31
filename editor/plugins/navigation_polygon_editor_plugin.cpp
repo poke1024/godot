@@ -61,4 +61,3 @@ NavigationPolygonEditorPlugin::NavigationPolygonEditorPlugin(EditorNode *p_node)
 	AbstractPolygon2DEditorPlugin(p_node, memnew(NavigationPolygonEditor(p_node)), "NavigationPolygonInstance") {
 
 }
-

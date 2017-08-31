@@ -31,9 +31,10 @@
 #define EDITABLEPOLYGON2D_H
 
 #include "core/undo_redo.h"
+#include "core/resource.h"
 #include "scene/resources/texture.h"
 
-class EditablePolygon2D {
+class EditablePolygon2D : public Resource {
 public:
 	virtual int edit_get_polygon_count() const = 0;
 	virtual Vector<Vector2> edit_get_polygon(int p_polygon) const = 0;

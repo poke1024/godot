@@ -42,6 +42,7 @@ class CollisionPolygon2DEditor : public AbstractPolygon2DEditor {
 
 protected:
 	virtual EditablePolygon2D *_get_editable(Node *p_node) const;
+	virtual void _create_res();
 
 public:
 	CollisionPolygon2DEditor(EditorNode *p_editor);

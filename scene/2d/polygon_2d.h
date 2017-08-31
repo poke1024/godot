@@ -33,9 +33,9 @@
 #include "scene/2d/node_2d.h"
 #include "scene/2d/editable_polygon_2d.h"
 
-class Polygon2D : public Node2D, public EditablePolygon2D {
+class Polygon2D : public EditablePolygon2D {
 
-	GDCLASS(Polygon2D, Node2D);
+	GDCLASS(Polygon2D, EditablePolygon2D);
 
 	PoolVector<Vector2> polygon;
 	PoolVector<Vector2> uv;
@@ -58,7 +58,6 @@ class Polygon2D : public Node2D, public EditablePolygon2D {
 	float _get_texture_rotationd() const;
 
 protected:
-	void _notification(int p_what);
 	static void _bind_methods();
 
 public:
@@ -98,6 +97,8 @@ public:
 	void set_offset(const Vector2 &p_offset);
 	Vector2 get_offset() const;
 
+	void draw(RID p_canvas_item);
+
 	//editor stuff
 
 	virtual void edit_set_pivot(const Point2 &p_pivot);
@@ -120,6 +121,28 @@ public:
 	virtual Color edit_get_previous_outline_color() const;
 
 	Polygon2D();
+};
+
+class Polygon2DInstance : public Node2D {
+
+	GDCLASS(Polygon2DInstance, Node2D);
+
+	Ref<Polygon2D> polygon;
+
+	void _polygon_changed();
+
+protected:
+	void _notification(int p_what);
+	static void _bind_methods();
+
+public:
+	void set_polygon(const Ref<Polygon2D> &p_polygon);
+	Ref<Polygon2D> get_polygon() const;
+
+	virtual String get_configuration_warning() const;
+	virtual Rect2 get_item_rect() const;
+
+	Polygon2DInstance();
 };
 
 #endif // POLYGON_2D_H

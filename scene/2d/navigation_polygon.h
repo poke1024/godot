@@ -33,9 +33,9 @@
 #include "scene/2d/node_2d.h"
 #include "scene/2d/editable_polygon_2d.h"
 
-class NavigationPolygon : public Resource, public EditablePolygon2D {
+class NavigationPolygon : public EditablePolygon2D {
 
-	GDCLASS(NavigationPolygon, Resource);
+	GDCLASS(NavigationPolygon, EditablePolygon2D);
 
 	PoolVector<Vector2> vertices;
 	struct Polygon {

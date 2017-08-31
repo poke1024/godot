@@ -37,7 +37,21 @@
 
 EditablePolygon2D *Polygon2DEditor::_get_editable(Node *p_node) const {
 
-	return Object::cast_to<Polygon2D>(p_node);
+	return Object::cast_to<Polygon2DInstance>(p_node)->get_polygon().ptr();
+}
+
+void Polygon2DEditor::_create_res() {
+
+	if (!node)
+		return;
+
+	undo_redo->create_action(TTR("Create Polygon2D"));
+	undo_redo->add_do_method(node, "set_polygon", Ref<Polygon2D>(memnew(Polygon2D)));
+	undo_redo->add_undo_method(node, "set_polygon", Variant(REF()));
+	undo_redo->commit_action();
+	_menu_option(MODE_CREATE);
+
+	editable = _get_editable(node);
 }
 
 void Polygon2DEditor::_notification(int p_what) {
@@ -588,6 +602,6 @@ Polygon2DEditor::Polygon2DEditor(EditorNode *p_editor) : AbstractPolygon2DEditor
 }
 
 Polygon2DEditorPlugin::Polygon2DEditorPlugin(EditorNode *p_node) :
-	AbstractPolygon2DEditorPlugin(p_node, memnew(Polygon2DEditor(p_node)), "Polygon2D") {
+	AbstractPolygon2DEditorPlugin(p_node, memnew(Polygon2DEditor(p_node)), "Polygon2DInstance") {
 
 }

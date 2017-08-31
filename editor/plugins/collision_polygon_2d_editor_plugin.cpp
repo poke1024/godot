@@ -35,7 +35,21 @@
 
 EditablePolygon2D *CollisionPolygon2DEditor::_get_editable(Node *p_node) const {
 
-	return Object::cast_to<CollisionPolygon2D>(p_node);
+	return Object::cast_to<CollisionPolygon2DInstance>(p_node)->get_polygon().ptr();
+}
+
+void CollisionPolygon2DEditor::_create_res() {
+
+	if (!node)
+		return;
+
+	undo_redo->create_action(TTR("Create Collision Polygon"));
+	undo_redo->add_do_method(node, "set_polygon", Ref<CollisionPolygon2D>(memnew(CollisionPolygon2D)));
+	undo_redo->add_undo_method(node, "set_polygon", Variant(REF()));
+	undo_redo->commit_action();
+	_menu_option(MODE_CREATE);
+
+	editable = _get_editable(node);
 }
 
 CollisionPolygon2DEditor::CollisionPolygon2DEditor(EditorNode *p_editor) : AbstractPolygon2DEditor(p_editor) {
@@ -43,6 +57,6 @@ CollisionPolygon2DEditor::CollisionPolygon2DEditor(EditorNode *p_editor) : Abstr
 }
 
 CollisionPolygon2DEditorPlugin::CollisionPolygon2DEditorPlugin(EditorNode *p_node) :
-	AbstractPolygon2DEditorPlugin(p_node, memnew(CollisionPolygon2DEditor(p_node)), "CollisionPolygon2D") {
+	AbstractPolygon2DEditorPlugin(p_node, memnew(CollisionPolygon2DEditor(p_node)), "CollisionPolygon2DInstance") {
 
 }
