@@ -30,6 +30,7 @@
 #ifndef COLOR_H
 #define COLOR_H
 
+#include "map.h"
 #include "math_funcs.h"
 #include "ustring.h"
 /**
@@ -187,6 +188,7 @@ struct Color {
 	static Color hex(uint32_t p_hex);
 	static Color html(const String &p_color);
 	static bool html_is_valid(const String &p_color);
+	static const Map<String, Color> &names();
 	static Color named(const String &p_name);
 	String to_html(bool p_alpha = true) const;
 

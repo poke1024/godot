@@ -580,15 +580,16 @@ GDScriptParser::Node *GDScriptParser::_parse_expression(Node *p_parent, bool p_s
 				_set_error("Built-in type constant expected after '.'");
 				return NULL;
 			}
-			if (!Variant::has_numeric_constant(bi_type, identifier)) {
+			if (!Variant::has_constant(bi_type, identifier)) {
 
-				_set_error("Static constant  '" + identifier.operator String() + "' not present in built-in type " + Variant::get_type_name(bi_type) + ".");
+				_set_error("Static constant '" + identifier.operator String() + "' not present in built-in type " + Variant::get_type_name(bi_type) + ".");
 				return NULL;
-			}
+			} else {
 
-			ConstantNode *cn = alloc_node<ConstantNode>();
-			cn->value = Variant::get_numeric_constant_value(bi_type, identifier);
-			expr = cn;
+				ConstantNode *cn = alloc_node<ConstantNode>();
+				cn->value = Variant::get_constant_value(bi_type, identifier);
+				expr = cn;
+			}
 
 		} else if (tokenizer->get_token(1) == GDScriptTokenizer::TK_PARENTHESIS_OPEN && tokenizer->is_token_literal()) {
 			// We check with is_token_literal, as this allows us to use match/sync/etc. as a name
