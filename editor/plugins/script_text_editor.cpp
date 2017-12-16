@@ -35,6 +35,10 @@
 #include "editor/script_editor_debugger.h"
 #include "os/keyboard.h"
 
+#ifdef GDSCRIPT_ENABLED
+#include "modules/gdscript/gdscript_tokenizer.h"
+#endif
+
 Vector<String> ScriptTextEditor::get_functions() {
 
 	String errortxt;
@@ -54,6 +58,108 @@ Vector<String> ScriptTextEditor::get_functions() {
 	}
 
 	return functions;
+}
+
+void ScriptTextEditor::_parse_inline(const TextEdit &p_text_edit, int p_line, const String &p_str, Vector<TextEdit::Inline> &r_inlines) {
+
+#ifdef GDSCRIPT_ENABLED
+	GDScriptTokenizerText tokenizer;
+	tokenizer.set_code(p_str);
+
+	const int inline_size = p_text_edit.get_row_height();
+
+	bool done = false;
+	do {
+		switch (tokenizer.get_token()) {
+			case GDScriptTokenizer::TK_BUILT_IN_TYPE: {
+				if (tokenizer.get_token_type() == Variant::COLOR) {
+					const int insert = tokenizer.get_token_column(0) - 1;
+					tokenizer.advance(1);
+					if (tokenizer.get_token() == GDScriptTokenizer::TK_PARENTHESIS_OPEN) {
+						const int begin = tokenizer.get_token_column(0) - 1;
+						tokenizer.advance(1);
+
+						TextEdit::Inline inline_color;
+						inline_color.line = p_line;
+						inline_color.editable = false;
+						inline_color.insert = insert;
+						inline_color.begin = begin;
+						inline_color.end = -1;
+						inline_color.symbol = 0x25CF; // filled circle
+						inline_color.color = Color(0, 0, 0);
+						inline_color.pixel_width = inline_size;
+						inline_color.pixel_height = inline_size;
+
+						bool error = false;
+						for (int c = 0; c < 4; c++) {
+							if (c > 0) {
+								if (tokenizer.get_token() != GDScriptTokenizer::TK_COMMA) {
+									error = c < 3;
+									break;
+								}
+								tokenizer.advance(1);
+							}
+							if (tokenizer.get_token() != GDScriptTokenizer::TK_CONSTANT) {
+								error = true;
+								break;
+							}
+							inline_color.color.components[c] = tokenizer.get_token_constant();
+							tokenizer.advance(1);
+						}
+						if (!error && tokenizer.get_token() == GDScriptTokenizer::TK_PARENTHESIS_CLOSE) {
+							tokenizer.advance(1);
+							inline_color.editable = true;
+							inline_color.begin = begin;
+							inline_color.end = tokenizer.get_token_column(0) - 1;
+						}
+
+						r_inlines.push_back(inline_color);
+					}
+				} else {
+					tokenizer.advance(1);
+				}
+			} break;
+
+			case GDScriptTokenizer::TK_ERROR:
+			case GDScriptTokenizer::TK_EOF: {
+				done = true;
+			} break;
+
+			default: {
+				tokenizer.advance(1);
+			} break;
+		}
+	} while (!done);
+#endif
+
+	if (error_line == p_line) {
+
+		TextEdit::Inline inline_error;
+		inline_error.line = p_line;
+		inline_error.editable = false;
+		inline_error.insert = error_col;
+		inline_error.begin = -1;
+		inline_error.end = -1;
+		inline_error.symbol = 0x25BA; // right triangle
+		inline_error.color = Color(1, 0, 0);
+		inline_error.pixel_width = inline_size;
+		inline_error.pixel_height = inline_size;
+
+		r_inlines.push_back(inline_error);
+		r_inlines.sort_custom<TextEdit::InlineComparator>();
+	}
+}
+
+void ScriptTextEditor::_edit_inline(const TextEdit::Inline &p_inline) {
+
+	if (color_panel->is_visible_in_tree())
+		return; // avoid endless recursion
+	color_picker->set_edit_alpha(true);
+	color_picker->set_pick_color(p_inline.color);
+	const Rect2 &r = p_inline.rect;
+	color_panel->set_position(get_global_transform().xform(r.get_position() + Vector2(0, r.get_size().height)));
+	edited_inline_color = p_inline;
+	color_panel->popup();
 }
 
 void ScriptTextEditor::apply_code() {
@@ -423,9 +529,13 @@ void ScriptTextEditor::_validate_script() {
 	Set<int> safe_lines;
 
 	if (!script->get_language()->validate(text, line, col, errortxt, script->get_path(), &fnc, &safe_lines)) {
+		error_line = line - 1;
+		error_col = col - 1;
 		String error_text = "error(" + itos(line) + "," + itos(col) + "): " + errortxt;
 		code_editor->set_error(error_text);
 	} else {
+		error_line = -1;
+		error_col = -1;
 		code_editor->set_error("");
 		line = -1;
 		if (!script->is_tool()) {
@@ -848,10 +958,6 @@ void ScriptTextEditor::_edit_option(int p_op) {
 
 			convert_indent_to_tabs();
 		} break;
-		case EDIT_PICK_COLOR: {
-
-			color_panel->popup();
-		} break;
 		case EDIT_TO_UPPERCASE: {
 
 			_convert_case(CodeTextEditor::UPPER);
@@ -1190,7 +1296,7 @@ void ScriptTextEditor::_text_edit_gui_input(const Ref<InputEvent> &ev) {
 			Vector2 mpos = mb->get_global_position() - tx->get_global_position();
 
 			tx->set_right_click_moves_caret(EditorSettings::get_singleton()->get("text_editor/cursor/right_click_moves_caret"));
-			bool has_color = (tx->get_word_at_pos(mpos) == "Color");
+			bool have_selection = (tx->get_selection_text().length() > 0);
 			int fold_state = 0;
 			bool can_fold = tx->can_fold(row);
 			bool is_folded = tx->is_folded(row);
@@ -1215,42 +1321,17 @@ void ScriptTextEditor::_text_edit_gui_input(const Ref<InputEvent> &ev) {
 			}
 
 			if (!mb->is_pressed()) {
-				if (has_color) {
-					String line = tx->get_line(row);
-					color_line = row;
-					int begin = 0;
-					int end = 0;
-					bool valid = false;
-					for (int i = col; i < line.length(); i++) {
-						if (line[i] == '(') {
-							begin = i;
-							continue;
-						} else if (line[i] == ')') {
-							end = i + 1;
-							valid = true;
-							break;
-						}
-					}
-					if (valid) {
-						color_args = line.substr(begin, end - begin);
-						String stripped = color_args.replace(" ", "").replace("(", "").replace(")", "");
-						Vector<float> color = stripped.split_floats(",");
-						if (color.size() > 2) {
-							float alpha = color.size() > 3 ? color[3] : 1.0f;
-							color_picker->set_pick_color(Color(color[0], color[1], color[2], alpha));
-						}
-						color_panel->set_position(get_global_transform().xform(get_local_mouse_position()));
-					} else {
-						has_color = false;
-					}
-				}
-				_make_context_menu(tx->is_selection_active(), has_color, can_fold, is_folded);
+				_make_context_menu(tx->is_selection_active(), can_fold, is_folded);
 			}
 		}
 	}
 }
 
 void ScriptTextEditor::_color_changed(const Color &p_color) {
+
+	if (edited_inline_color.line < 0)
+		return;
+
 	String new_args;
 	if (p_color.a == 1.0f) {
 		new_args = String("(" + rtos(p_color.r) + ", " + rtos(p_color.g) + ", " + rtos(p_color.b) + ")");
@@ -1258,13 +1339,17 @@ void ScriptTextEditor::_color_changed(const Color &p_color) {
 		new_args = String("(" + rtos(p_color.r) + ", " + rtos(p_color.g) + ", " + rtos(p_color.b) + ", " + rtos(p_color.a) + ")");
 	}
 
-	String line = code_editor->get_text_edit()->get_line(color_line);
-	String new_line = line.replace(color_args, new_args);
-	color_args = new_args;
-	code_editor->get_text_edit()->set_line(color_line, new_line);
+	const TextEdit::Inline &c = edited_inline_color;
+	const String line = code_editor->get_text_edit()->get_line(c.line);
+	const String old_args = line.substr(c.begin, c.end);
+	if (old_args.length() > 0 && old_args[0] == '(' && old_args[old_args.length() - 1] == ')') {
+		code_editor->get_text_edit()->set_line(c.line, line.substr(0, c.begin) + new_args + line.substr(c.end + 1, line.length()));
+		code_editor->get_text_edit()->update();
+		edited_inline_color.end = c.begin + new_args.length();
+	}
 }
 
-void ScriptTextEditor::_make_context_menu(bool p_selection, bool p_color, bool p_can_fold, bool p_is_folded) {
+void ScriptTextEditor::_make_context_menu(bool p_selection, bool p_can_fold, bool p_is_folded) {
 
 	context_menu->clear();
 	if (p_selection) {
@@ -1290,10 +1375,6 @@ void ScriptTextEditor::_make_context_menu(bool p_selection, bool p_color, bool p
 	if (p_can_fold || p_is_folded)
 		context_menu->add_shortcut(ED_GET_SHORTCUT("script_text_editor/toggle_fold_line"), EDIT_TOGGLE_FOLD_LINE);
 
-	if (p_color) {
-		context_menu->add_separator();
-		context_menu->add_item(TTR("Pick Color"), EDIT_PICK_COLOR);
-	}
 	context_menu->set_position(get_global_transform().xform(get_local_mouse_position()));
 	context_menu->set_size(Vector2(1, 1));
 	context_menu->popup();
@@ -1302,6 +1383,9 @@ void ScriptTextEditor::_make_context_menu(bool p_selection, bool p_color, bool p
 ScriptTextEditor::ScriptTextEditor() {
 
 	theme_loaded = false;
+
+	error_line = -1;
+	error_col = -1;
 
 	code_editor = memnew(CodeTextEditor);
 	add_child(code_editor);
@@ -1324,6 +1408,8 @@ ScriptTextEditor::ScriptTextEditor() {
 	code_editor->get_text_edit()->set_context_menu_enabled(false);
 	code_editor->get_text_edit()->connect("gui_input", this, "_text_edit_gui_input");
 
+	code_editor->get_text_edit()->_set_inline_processor(this);
+
 	context_menu = memnew(PopupMenu);
 	add_child(context_menu);
 	context_menu->connect("id_pressed", this, "_edit_option");
@@ -1333,6 +1419,7 @@ ScriptTextEditor::ScriptTextEditor() {
 	color_picker = memnew(ColorPicker);
 	color_panel->add_child(color_picker);
 	color_picker->connect("color_changed", this, "_color_changed");
+	edited_inline_color.line = -1;
 
 	edit_hb = memnew(HBoxContainer);
 
@@ -1415,6 +1502,11 @@ ScriptTextEditor::ScriptTextEditor() {
 	add_child(goto_line_dialog);
 
 	code_editor->get_text_edit()->set_drag_forwarding(this);
+}
+
+ScriptTextEditor::~ScriptTextEditor() {
+
+	code_editor->get_text_edit()->_set_inline_processor(NULL);
 }
 
 static ScriptEditorBase *create_editor(const RES &p_resource) {

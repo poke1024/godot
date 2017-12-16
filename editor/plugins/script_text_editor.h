@@ -31,10 +31,9 @@
 #ifndef SCRIPT_TEXT_EDITOR_H
 #define SCRIPT_TEXT_EDITOR_H
 
-#include "scene/gui/color_picker.h"
 #include "script_editor_plugin.h"
 
-class ScriptTextEditor : public ScriptEditorBase {
+class ScriptTextEditor : public ScriptEditorBase, public TextEdit::InlineProcessor {
 
 	GDCLASS(ScriptTextEditor, ScriptEditorBase);
 
@@ -58,8 +57,10 @@ class ScriptTextEditor : public ScriptEditorBase {
 
 	PopupPanel *color_panel;
 	ColorPicker *color_picker;
-	int color_line;
-	String color_args;
+	TextEdit::Inline edited_inline_color;
+
+	int error_line;
+	int error_col;
 
 	void _update_member_keywords();
 
@@ -93,7 +94,6 @@ class ScriptTextEditor : public ScriptEditorBase {
 		EDIT_INDENT_LEFT,
 		EDIT_DELETE_LINE,
 		EDIT_CLONE_DOWN,
-		EDIT_PICK_COLOR,
 		EDIT_TO_UPPERCASE,
 		EDIT_TO_LOWERCASE,
 		EDIT_CAPITALIZE,
@@ -131,9 +131,8 @@ protected:
 	void _change_syntax_highlighter(int p_idx);
 
 	void _edit_option(int p_op);
-	void _make_context_menu(bool p_selection, bool p_color, bool p_can_fold, bool p_is_folded);
+	void _make_context_menu(bool p_selection, bool p_can_fold, bool p_is_folded);
 	void _text_edit_gui_input(const Ref<InputEvent> &ev);
-	void _color_changed(const Color &p_color);
 
 	void _goto_line(int p_line) { goto_line(p_line); }
 	void _lookup_symbol(const String &p_symbol, int p_row, int p_column);
@@ -147,6 +146,11 @@ protected:
 public:
 	virtual void add_syntax_highlighter(SyntaxHighlighter *p_highlighter);
 	virtual void set_syntax_highlighter(SyntaxHighlighter *p_highlighter);
+
+	virtual void _parse_inline(const TextEdit &p_text_edit, int p_line, const String &p_str, Vector<TextEdit::Inline> &r_inlines);
+	virtual void _edit_inline(const TextEdit::Inline &p_inline);
+
+	void _color_changed(const Color &p_color);
 
 	virtual void apply_code();
 	virtual RES get_edited_resource() const;
@@ -184,6 +188,7 @@ public:
 	static void register_editor();
 
 	ScriptTextEditor();
+	virtual ~ScriptTextEditor();
 };
 
 #endif // SCRIPT_TEXT_EDITOR_H
