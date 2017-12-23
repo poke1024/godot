@@ -1544,13 +1544,22 @@ ProjectManager::ProjectManager() {
 	search_tree_vb->set_h_size_flags(SIZE_EXPAND_FILL);
 	tree_hb->add_child(search_tree_vb);
 
+	HBoxContainer *top_box = memnew(HBoxContainer);
+	top_box->set_h_size_flags(SIZE_EXPAND_FILL);
+
+	HBoxContainer *hbt = memnew(HBoxContainer);
+	top_box->add_child(hbt);
+
 	HBoxContainer *search_box = memnew(HBoxContainer);
-	search_box->add_spacer(true);
+	top_box->add_child(search_box);
+
+	search_box->set_h_size_flags(SIZE_EXPAND_FILL);
+	search_box->set_alignment(HBoxContainer::ALIGN_END);
 	project_filter = memnew(ProjectListFilter);
 	search_box->add_child(project_filter);
 	project_filter->connect("filter_changed", this, "_load_recent_projects");
 	project_filter->set_custom_minimum_size(Size2(250, 10));
-	search_tree_vb->add_child(search_box);
+	search_tree_vb->add_child(top_box);
 
 	PanelContainer *pc = memnew(PanelContainer);
 	pc->add_style_override("panel", gui_base->get_stylebox("bg", "Tree"));
@@ -1567,28 +1576,27 @@ ProjectManager::ProjectManager() {
 	scroll_childs->set_h_size_flags(SIZE_EXPAND_FILL);
 	scroll->add_child(scroll_childs);
 
-	//HBoxContainer *hb = memnew( HBoxContainer );
-	//vb->add_child(hb);
+	Button *show = memnew(Button);
+	show->set_icon(get_icon("Filesystem", "EditorIcons"));
+	hbt->add_child(show);
+	show->connect("pressed", this, "_show_project");
+	show_btn = show;
 
 	Button *open = memnew(Button);
 	open->set_text(TTR("Edit"));
-	tree_vb->add_child(open);
+	open->set_custom_minimum_size(Size2(128, 0) * EDSCALE);
+	hbt->add_child(open);
 	open->connect("pressed", this, "_open_project");
 	open_btn = open;
 
 	Button *run = memnew(Button);
 	run->set_text(TTR("Run"));
-	tree_vb->add_child(run);
+	run->set_custom_minimum_size(Size2(128, 0) * EDSCALE);
+	hbt->add_child(run);
 	run->connect("pressed", this, "_run_project");
 	run_btn = run;
 
-	Button *show = memnew(Button);
-	show->set_text(TTR("Show"));
-	tree_vb->add_child(show);
-	show->connect("pressed", this, "_show_project");
-	show_btn = show;
-
-	tree_vb->add_child(memnew(HSeparator));
+	//tree_vb->add_child(memnew(HSeparator));
 
 	Button *scan = memnew(Button);
 	scan->set_text(TTR("Scan"));
