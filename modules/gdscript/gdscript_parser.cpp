@@ -632,6 +632,17 @@ GDScriptParser::Node *GDScriptParser::_parse_expression(Node *p_parent, bool p_s
 				BuiltInFunctionNode *bn = alloc_node<BuiltInFunctionNode>();
 				bn->function = tokenizer->get_token_built_in_func();
 				op->arguments.push_back(bn);
+				if (current_function) {
+					switch (bn->function) {
+                        case GDScriptFunctions::TEXT_PRINT:
+						case GDScriptFunctions::TEXT_PRINT_TABBED:
+						case GDScriptFunctions::TEXT_PRINT_SPACED: {
+							ConstantNode *constant = alloc_node<ConstantNode>();
+							constant->value = self_path + ":" + current_function->name + ": ";
+							op->arguments.push_back(constant);
+						} break;
+					}
+				}
 				tokenizer->advance(2);
 			} else {
 
