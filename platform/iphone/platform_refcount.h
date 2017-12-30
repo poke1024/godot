@@ -34,10 +34,17 @@
 #define REFCOUNT_T int
 #define REFCOUNT_GET_T int const volatile &
 
-#include <libkern/OSAtomic.h>
+#include <stdatomic.h>
 
 inline int atomic_conditional_increment(volatile int *v) {
-	return (*v == 0) ? 0 : OSAtomicIncrement32(v);
+	ERR_FAIL_COND_V(!atomic_is_lock_free(v), 0);
+	while (true) {
+		int tmp = atomic_load(v);
+		if (tmp == 0)
+			return 0; // if zero, can't add to it anymore
+		if (atomic_compare_exchange_strong(v, tmp, tmp + 1))
+			return tmp + 1;
+	}
 }
 
 inline int atomic_decrement(volatile int *v) {
