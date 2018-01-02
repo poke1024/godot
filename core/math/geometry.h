@@ -886,6 +886,90 @@ public:
 		return H;
 	}
 
+	template <typename A, typename T>
+	static Vector<int> nearest(const A &p_array, int p_size, const T &p_val, int p_n) {
+
+		struct Nearest {
+			int index;
+			real_t distance;
+		};
+
+		struct NearestComparator {
+			_FORCE_INLINE_ bool operator()(const Nearest &a, const Nearest &b) const {
+				return a.distance < b.distance;
+			}
+		};
+
+		struct NearestDistance {
+			_FORCE_INLINE_ real_t operator()(real_t x, real_t y) const {
+				return Math::abs(x - y);
+			}
+			_FORCE_INLINE_ real_t operator()(const Vector2 &x, const Vector2 &y) const {
+				return x.distance_squared_to(y);
+			}
+			_FORCE_INLINE_ real_t operator()(const Vector3 &x, const Vector3 &y) const {
+				return x.distance_squared_to(y);
+			}
+		};
+
+		if (p_size <= 0 || p_n == 0)
+			return Vector<int>();
+
+		Vector<int> result;
+		if (p_size == 1) {
+			result.push_back(0);
+			return result;
+		}
+
+		real_t d_sgn;
+		if (p_n < 0) {
+			p_n = -p_n;
+			d_sgn = -1;
+		} else {
+			d_sgn = 1;
+		}
+		p_n = MIN(p_size, p_n);
+
+		NearestDistance distance;
+
+		if (p_n == 1) {
+			real_t min_d;
+			int min_i;
+			for (int i = 0; i < p_size; i++) {
+				real_t d = d_sgn * distance((T)p_array[i], p_val);
+				if (i == 0 || d < min_d) {
+					min_d = d;
+					min_i = i;
+				}
+			}
+			result.push_back(min_i);
+			return result;
+		}
+
+		SortArray<Nearest, NearestComparator> sort;
+		Vector<Nearest> heap;
+		heap.resize(p_size);
+
+		for (int i = 0; i < p_size; i++) {
+			Nearest &n = heap[i];
+			n.index = i;
+			n.distance = -d_sgn * distance((T)p_array[i], p_val);
+		}
+
+		sort.make_heap(0, p_size, heap.ptrw());
+
+		result.resize(p_n);
+
+		int last = p_size;
+		for (int i = 0; i < p_n; i++) {
+			sort.pop_heap(0, last, heap.ptrw());
+			result[i] = heap[last - 1].index;
+			last--;
+		}
+
+		return result;
+	}
+
 	static MeshData build_convex_mesh(const PoolVector<Plane> &p_planes);
 	static PoolVector<Plane> build_sphere_planes(real_t p_radius, int p_lats, int p_lons, Vector3::Axis p_axis = Vector3::AXIS_Z);
 	static PoolVector<Plane> build_box_planes(const Vector3 &p_extents);

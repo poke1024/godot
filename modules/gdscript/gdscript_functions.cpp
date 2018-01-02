@@ -38,6 +38,7 @@
 #include "os/os.h"
 #include "reference.h"
 #include "variant_parser.h"
+#include "core/math/geometry.h"
 
 const char *GDScriptFunctions::get_func_name(Function p_func) {
 
@@ -121,9 +122,21 @@ const char *GDScriptFunctions::get_func_name(Function p_func) {
 		"print_stack",
 		"instance_from_id",
 		"len",
+		"nearest",
 	};
 
 	return _names[p_func];
+}
+
+template <typename A, typename T>
+Variant nearest(const A &p_array, int p_size, const T &p_val, bool p_multiple, int p_n) {
+	if (p_multiple) {
+		return Geometry::nearest(p_array, p_size, p_val, p_n);
+	} else if (p_size <= 0) {
+		return Variant();
+	} else {
+		return p_array[Geometry::nearest(p_array, p_size, p_val, 1)[0]];
+	}
 }
 
 void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_count, Variant &r_ret, Variant::CallError &r_error) {
@@ -1266,6 +1279,73 @@ void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_
 			}
 
 		} break;
+		case NEAREST: {
+
+			if (p_arg_count < 2) {
+				r_error.error = Variant::CallError::CALL_ERROR_TOO_FEW_ARGUMENTS;
+				r_error.argument = 2;
+				r_ret = Variant();
+
+				return;
+			}
+			if (p_arg_count > 3) {
+				r_error.error = Variant::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS;
+				r_error.argument = 3;
+				r_ret = Variant();
+
+				return;
+			}
+
+			int n;
+			bool multiple;
+			if (p_arg_count == 3) {
+				VALIDATE_ARG_NUM(2);
+				multiple = true;
+				n = *p_args[2];
+			} else {
+				multiple = false;
+				n = 1;
+			}
+
+#define VARIANT_TYPE_PAIR(x, y) (int(x) * int(Variant::VARIANT_MAX) + int(y))
+			switch (VARIANT_TYPE_PAIR(p_args[0]->get_type(), p_args[1]->get_type())) {
+
+				case VARIANT_TYPE_PAIR(Variant::ARRAY, Variant::REAL): {
+					Array d = *p_args[0];
+					r_ret = nearest(d, d.size(), p_args[1]->operator real_t(), multiple, n);
+				} break;
+				case VARIANT_TYPE_PAIR(Variant::ARRAY, Variant::VECTOR2): {
+					Array d = *p_args[0];
+					r_ret = nearest(d, d.size(), p_args[1]->operator Vector2(), multiple, n);
+				} break;
+				case VARIANT_TYPE_PAIR(Variant::ARRAY, Variant::VECTOR3): {
+					Array d = *p_args[0];
+					r_ret = nearest(d, d.size(), p_args[1]->operator Vector3(), multiple, n);
+				} break;
+				case VARIANT_TYPE_PAIR(Variant::POOL_REAL_ARRAY, Variant::REAL): {
+					PoolVector<real_t> d = *p_args[0];
+					r_ret = nearest(d.read(), d.size(), p_args[1]->operator real_t(), multiple, n);
+				} break;
+				case VARIANT_TYPE_PAIR(Variant::POOL_VECTOR2_ARRAY, Variant::VECTOR2): {
+					PoolVector<Vector2> d = *p_args[0];
+					r_ret = nearest(d.read(), d.size(), p_args[1]->operator Vector2(), multiple, n);
+				} break;
+				case VARIANT_TYPE_PAIR(Variant::POOL_VECTOR3_ARRAY, Variant::VECTOR3): {
+					PoolVector<Vector3> d = *p_args[0];
+					r_ret = nearest(d.read(), d.size(), p_args[1]->operator Vector3(), multiple, n);
+				} break;
+				default: {
+					r_error.error = Variant::CallError::CALL_ERROR_INVALID_ARGUMENT;
+					r_error.argument = 0;
+					r_error.expected = Variant::NIL;
+					r_ret = Variant();
+					r_ret = RTR("nearest() does not support the given combination of types.");
+				} break;
+			}
+#undef VARIANT_TYPE_PAIR
+
+		} break;
+
 		case FUNC_MAX: {
 
 			ERR_FAIL();
@@ -1783,6 +1863,12 @@ MethodInfo GDScriptFunctions::get_info(Function p_func) {
 		case LEN: {
 			MethodInfo mi("len", PropertyInfo(Variant::NIL, "var"));
 			mi.return_val.type = Variant::INT;
+			return mi;
+		} break;
+		case NEAREST: {
+			MethodInfo mi("nearest");
+			mi.return_val.type = Variant::NIL;
+			mi.flags |= METHOD_FLAG_VARARG;
 			return mi;
 		} break;
 
