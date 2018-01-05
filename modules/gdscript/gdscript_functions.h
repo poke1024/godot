@@ -113,6 +113,7 @@ public:
 		PRINT_STACK,
 		INSTANCE_FROM_ID,
 		LEN,
+		LOGIC_SUM,
 		FUNC_MAX
 
 	};

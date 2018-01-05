@@ -559,30 +559,24 @@
 		<method name="max">
 			<return type="float">
 			</return>
-			<argument index="0" name="a" type="float">
-			</argument>
-			<argument index="1" name="b" type="float">
-			</argument>
 			<description>
-				Returns the maximum of two values.
+				Returns the maximum of the given values. If an array is passed, max will return the maximum of the elements in that array.
 				[codeblock]
-				max(1,2) # returns 2
+				max(1, 2, 3) # returns 3
 				max(-3.99, -4) # returns -3.99
+				max([100, 10, -10, 0]) # returns 100
 				[/codeblock]
 			</description>
 		</method>
 		<method name="min">
 			<return type="float">
 			</return>
-			<argument index="0" name="a" type="float">
-			</argument>
-			<argument index="1" name="b" type="float">
-			</argument>
 			<description>
-				Returns the minimum of two values.
+				Return the minimum of the given values. If an array is passed, min will return the minimum of the elements in that array.
 				[codeblock]
-				min(1,2) # returns 1
+				min(1, 2, 3) # returns 1
 				min(-3.99, -4) # returns -4
+				min([100, 10, -10, 0]) # returns -10
 				[/codeblock]
 			</description>
 		</method>
