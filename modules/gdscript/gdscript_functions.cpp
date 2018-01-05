@@ -127,6 +127,100 @@ const char *GDScriptFunctions::get_func_name(Function p_func) {
 	return _names[p_func];
 }
 
+struct ArrayMin {
+	template <typename T, typename P>
+	_FORCE_INLINE_ static Variant call(const P &p_data, int p_len) {
+		if (p_len < 1)
+			return Variant();
+		T min = p_data[0];
+		for (int i = 1; i  < p_len; i++) {
+			const T x = p_data[i];
+			if (x < min)
+				min = x;
+		}
+		return min;
+	}
+};
+
+struct ArrayMax {
+	template <typename T, typename P>
+	_FORCE_INLINE_ static Variant call(const P &p_data, int p_len) {
+		if (p_len < 1)
+			return Variant();
+		T min = p_data[0];
+		for (int i = 1; i  < p_len; i++) {
+			const T x = p_data[i];
+			if (x > min)
+				min = x;
+		}
+		return min;
+	}
+};
+
+class ArgsArray {
+	const Variant **_args;
+
+public:
+	_FORCE_INLINE_ const Variant &operator[](int i) const {
+		return *_args[i];
+	}
+
+	_FORCE_INLINE_ ArgsArray(const Variant **args) : _args(args) {
+	}
+};
+
+template <typename F, typename A>
+Variant apply_on_variant_array(const A &p_arr, int p_len, int &r_error) {
+
+	bool is_int = true;
+	for (int i = 0; i < p_len; i++) {
+		if (p_arr[i].get_type() != Variant::INT) {
+			for (int j = i; j < p_len; j++) {
+				if (!p_arr[j].is_num()) {
+					r_error = j;
+					return Variant();
+				}
+			}
+			return F::template call<real_t>(p_arr, p_len);
+		}
+	}
+	return F::template call<int64_t>(p_arr, p_len);
+}
+
+template <typename F>
+Variant apply_on_array(const Variant &p_variant, int &r_error) {
+
+	switch (p_variant.get_type()) {
+		case Variant::ARRAY: {
+
+			const Array arr = p_variant.operator Array();
+			return apply_on_variant_array<F>(arr, arr.size(), r_error);
+		} break;
+		case Variant::POOL_BYTE_ARRAY: {
+
+			const PoolVector<uint8_t> arr = p_variant.operator PoolVector<uint8_t>();
+			PoolVector<uint8_t>::Read r = arr.read();
+			return F::template call<int64_t>(r.ptr(), arr.size());
+		} break;
+		case Variant::POOL_INT_ARRAY: {
+
+			const PoolVector<int> arr = p_variant.operator PoolVector<int>();
+			PoolVector<int>::Read r = arr.read();
+			return F::template call<int64_t>(r.ptr(), arr.size());
+
+		} break;
+		case Variant::POOL_REAL_ARRAY: {
+
+			const PoolVector<real_t> arr = p_variant.operator PoolVector<real_t>();
+			PoolVector<real_t>::Read r = arr.read();
+			return F::template call<real_t>(r.ptr(), arr.size());
+
+		} break;
+	}
+
+	return Variant();
+}
+
 void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_count, Variant &r_ret, Variant::CallError &r_error) {
 
 	r_error.error = Variant::CallError::CALL_OK;
@@ -436,38 +530,45 @@ void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_
 			r_ret = Math::wrapf((double)*p_args[0], (double)*p_args[1], (double)*p_args[2]);
 		} break;
 		case LOGIC_MAX: {
-			VALIDATE_ARG_COUNT(2);
-			if (p_args[0]->get_type() == Variant::INT && p_args[1]->get_type() == Variant::INT) {
+			int r_arg_err = -1;
+			if (p_arg_count == 1) {
 
-				int64_t a = *p_args[0];
-				int64_t b = *p_args[1];
-				r_ret = MAX(a, b);
+				r_ret = apply_on_array<ArrayMax>(*p_args[0], r_arg_err);
+				if (r_arg_err >= 0) {
+					r_error.error = Variant::CallError::CALL_ERROR_INVALID_ARGUMENT;
+					r_error.argument = 0;
+					r_error.expected = Variant::NIL;
+					r_ret = RTR("Given array must not contain non-numeric values");
+				}
 			} else {
-				VALIDATE_ARG_NUM(0);
-				VALIDATE_ARG_NUM(1);
 
-				real_t a = *p_args[0];
-				real_t b = *p_args[1];
-
-				r_ret = MAX(a, b);
+				r_ret = apply_on_variant_array<ArrayMax>(ArgsArray(p_args), p_arg_count, r_arg_err);
+				if (r_arg_err >= 0) {
+					r_error.error = Variant::CallError::CALL_ERROR_INVALID_ARGUMENT;
+					r_error.argument = r_arg_err;
+					r_error.expected = Variant::REAL;
+				}
 			}
-
 		} break;
 		case LOGIC_MIN: {
-			VALIDATE_ARG_COUNT(2);
-			if (p_args[0]->get_type() == Variant::INT && p_args[1]->get_type() == Variant::INT) {
+			int r_arg_err = -1;
+			if (p_arg_count == 1) {
 
-				int64_t a = *p_args[0];
-				int64_t b = *p_args[1];
-				r_ret = MIN(a, b);
+				r_ret = apply_on_array<ArrayMin>(*p_args[0], r_arg_err);
+				if (r_arg_err >= 0) {
+					r_error.error = Variant::CallError::CALL_ERROR_INVALID_ARGUMENT;
+					r_error.argument = 0;
+					r_error.expected = Variant::NIL;
+					r_ret = RTR("Given array must not contain non-numeric values");
+				}
 			} else {
-				VALIDATE_ARG_NUM(0);
-				VALIDATE_ARG_NUM(1);
 
-				real_t a = *p_args[0];
-				real_t b = *p_args[1];
-
-				r_ret = MIN(a, b);
+				r_ret = apply_on_variant_array<ArrayMin>(ArgsArray(p_args), p_arg_count, r_arg_err);
+				if (r_arg_err >= 0) {
+					r_error.error = Variant::CallError::CALL_ERROR_INVALID_ARGUMENT;
+					r_error.argument = r_arg_err;
+					r_error.expected = Variant::REAL;
+				}
 			}
 		} break;
 		case LOGIC_CLAMP: {
@@ -1574,8 +1675,9 @@ MethodInfo GDScriptFunctions::get_info(Function p_func) {
 
 		} break;
 		case LOGIC_MIN: {
-			MethodInfo mi("min", PropertyInfo(Variant::REAL, "a"), PropertyInfo(Variant::REAL, "b"));
-			mi.return_val.type = Variant::REAL;
+			MethodInfo mi("min");
+			mi.flags |= METHOD_FLAG_VARARG;
+			mi.return_val.type = Variant::NIL;
 			return mi;
 		} break;
 		case LOGIC_CLAMP: {
