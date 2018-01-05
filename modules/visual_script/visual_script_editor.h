@@ -247,7 +247,7 @@ protected:
 public:
 	virtual void apply_code();
 	virtual Ref<Script> get_edited_script() const;
-	virtual Vector<String> get_functions();
+	virtual void get_structure(ScriptStructure &r_structure);
 	virtual void set_edited_script(const Ref<Script> &p_script);
 	virtual void reload_text();
 	virtual String get_name();

@@ -1918,9 +1918,7 @@ Ref<Script> VisualScriptEditor::get_edited_script() const {
 	return script;
 }
 
-Vector<String> VisualScriptEditor::get_functions() {
-
-	return Vector<String>();
+void VisualScriptEditor::get_structure(ScriptStructure &r_structure) {
 }
 
 void VisualScriptEditor::set_edited_script(const Ref<Script> &p_script) {

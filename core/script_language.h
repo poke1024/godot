@@ -184,6 +184,40 @@ public:
 	ScriptCodeCompletionCache();
 };
 
+class ScriptStructure {
+public:
+	String name; // of class
+	Vector<String> extends;
+	int line;
+
+	struct Member {
+		String name;
+		int line;
+
+		inline Member() {
+		}
+
+		inline Member(const String &p_name) {
+
+			name = p_name;
+			line = -1;
+		}
+
+		inline Member(const String &p_name, int p_line) {
+
+			name = p_name;
+			line = p_line;
+		}
+	};
+
+	Vector<ScriptStructure> subclasses;
+	Vector<Member> variables;
+	Vector<Member> constants;
+	Vector<Member> signals;
+	Vector<Member> functions;
+	Vector<Member> static_functions;
+};
+
 class ScriptLanguage {
 public:
 	virtual String get_name() const = 0;
@@ -202,7 +236,7 @@ public:
 	virtual Ref<Script> get_template(const String &p_class_name, const String &p_base_class_name) const = 0;
 	virtual void make_template(const String &p_class_name, const String &p_base_class_name, Ref<Script> &p_script) {}
 	virtual bool is_using_templates() { return false; }
-	virtual bool validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path = "", List<String> *r_functions = NULL) const = 0;
+	virtual bool validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path = "", ScriptStructure *r_structure = NULL) const = 0;
 	virtual Script *create_script() const = 0;
 	virtual bool has_named_classes() const = 0;
 	virtual bool supports_builtin_mode() const = 0;

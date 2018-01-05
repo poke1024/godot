@@ -3107,6 +3107,7 @@ void GDScriptParser::_parse_class(ClassNode *p_class) {
 				newclass->ready->parent_class = newclass;
 				newclass->name = name;
 				newclass->owner = p_class;
+				newclass->line = tokenizer->get_token_line();
 
 				p_class->subclasses.push_back(newclass);
 
@@ -4366,6 +4367,7 @@ Error GDScriptParser::_parse(const String &p_base_path) {
 	main_class->initializer->parent_class = main_class;
 	main_class->ready = alloc_node<BlockNode>();
 	main_class->ready->parent_class = main_class;
+	main_class->line = 0;
 	current_class = main_class;
 
 	_parse_class(main_class);

@@ -78,6 +78,7 @@ public:
 		bool extends_used;
 		StringName extends_file;
 		Vector<StringName> extends_class;
+		int line;
 
 		struct Member {
 			PropertyInfo _export;

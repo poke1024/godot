@@ -103,7 +103,7 @@ Ref<Script> PluginScriptLanguage::get_template(const String &p_class_name, const
 	return script;
 }
 
-bool PluginScriptLanguage::validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path, List<String> *r_functions) const {
+bool PluginScriptLanguage::validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path, ScriptStructure *r_structure) const {
 	PoolStringArray functions;
 	if (_desc.validate) {
 		bool ret = _desc.validate(
@@ -114,8 +114,10 @@ bool PluginScriptLanguage::validate(const String &p_script, int &r_line_error, i
 				(godot_string *)&r_test_error,
 				(godot_string *)&p_path,
 				(godot_pool_string_array *)&functions);
-		for (int i = 0; i < functions.size(); i++) {
-			r_functions->push_back(functions[i]);
+		if (r_structure) {
+			for (int i = 0; i < functions.size(); i++) {
+				r_structure->functions.push_back(ScriptStructure::Member(functions[i]));
+			}
 		}
 		return ret;
 	}

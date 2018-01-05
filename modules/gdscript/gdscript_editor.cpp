@@ -42,6 +42,30 @@
 #include "engine.h"
 #endif
 
+static void class_node_to_structure(const GDScriptParser::ClassNode *p_node, ScriptStructure &r_structure) {
+
+	r_structure.name = p_node->name;
+	r_structure.line = p_node->line;
+
+	for (int i = 0; i < p_node->extends_class.size(); i++) {
+		r_structure.extends.push_back(p_node->extends_class[i]);
+	}
+	for (int i = 0; i < p_node->subclasses.size(); i++) {
+		ScriptStructure structure;
+		class_node_to_structure(p_node->subclasses[i], structure);
+		r_structure.subclasses.push_back(structure);
+	}
+	for (int i = 0; i < p_node->variables.size(); i++) {
+		r_structure.variables.push_back(ScriptStructure::Member(p_node->variables[i].identifier, p_node->variables[i].line));
+	}
+	for (int i = 0; i < p_node->functions.size(); i++) {
+		r_structure.functions.push_back(ScriptStructure::Member(p_node->functions[i]->name, p_node->functions[i]->line));
+	}
+	for (int i = 0; i < p_node->static_functions.size(); i++) {
+		r_structure.static_functions.push_back(ScriptStructure::Member(p_node->static_functions[i]->name, p_node->static_functions[i]->line));
+	}
+}
+
 void GDScriptLanguage::get_comment_delimiters(List<String> *p_delimiters) const {
 
 	p_delimiters->push_back("#");
@@ -91,7 +115,7 @@ void GDScriptLanguage::make_template(const String &p_class_name, const String &p
 	p_script->set_source_code(src);
 }
 
-bool GDScriptLanguage::validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path, List<String> *r_functions) const {
+bool GDScriptLanguage::validate(const String &p_script, int &r_line_error, int &r_col_error, String &r_test_error, const String &p_path, ScriptStructure *r_structure) const {
 
 	GDScriptParser parser;
 
@@ -101,27 +125,13 @@ bool GDScriptLanguage::validate(const String &p_script, int &r_line_error, int &
 		r_col_error = parser.get_error_column();
 		r_test_error = parser.get_error();
 		return false;
-	} else {
+	} else if (r_structure) {
 
 		const GDScriptParser::Node *root = parser.get_parse_tree();
 		ERR_FAIL_COND_V(root->type != GDScriptParser::Node::TYPE_CLASS, false);
 
 		const GDScriptParser::ClassNode *cl = static_cast<const GDScriptParser::ClassNode *>(root);
-		Map<int, String> funcs;
-		for (int i = 0; i < cl->functions.size(); i++) {
-
-			funcs[cl->functions[i]->line] = cl->functions[i]->name;
-		}
-
-		for (int i = 0; i < cl->static_functions.size(); i++) {
-
-			funcs[cl->static_functions[i]->line] = cl->static_functions[i]->name;
-		}
-
-		for (Map<int, String>::Element *E = funcs.front(); E; E = E->next()) {
-
-			r_functions->push_back(E->get() + ":" + itos(E->key()));
-		}
+		class_node_to_structure(cl, *r_structure);
 	}
 
 	return true;

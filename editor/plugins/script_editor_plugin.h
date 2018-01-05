@@ -82,7 +82,7 @@ protected:
 public:
 	virtual void apply_code() = 0;
 	virtual Ref<Script> get_edited_script() const = 0;
-	virtual Vector<String> get_functions() = 0;
+	virtual void get_structure(ScriptStructure &r_structure) = 0;
 	virtual void set_edited_script(const Ref<Script> &p_script) = 0;
 	virtual void reload_text() = 0;
 	virtual String get_name() = 0;
@@ -191,7 +191,8 @@ class ScriptEditor : public PanelContainer {
 
 	ItemList *script_list;
 	HSplitContainer *script_split;
-	ItemList *members_overview;
+	Tree *members_overview;
+	Tree *base_type_overview;
 	bool members_overview_enabled;
 	ItemList *help_overview;
 	bool help_overview_enabled;
@@ -299,11 +300,15 @@ class ScriptEditor : public PanelContainer {
 	void _autosave_scripts();
 
 	void _update_members_overview_visibility();
+	void _insert_script_structure_sep(TreeItem *p_parent, const String &p_name);
+	void _insert_script_structure_base_class(TreeItem *p_parent, const StringName &p_class);
+	void _insert_script_structure(TreeItem *p_parent, const ScriptStructure &p_structure);
 	void _update_members_overview();
 	void _update_script_names();
 	bool _sort_list_on_update;
 
-	void _members_overview_selected(int p_idx);
+	void _members_overview_selected();
+	void _base_type_overview_selected();
 	void _script_selected(int p_idx);
 
 	void _update_help_overview_visibility();

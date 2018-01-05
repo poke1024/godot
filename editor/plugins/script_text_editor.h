@@ -140,10 +140,12 @@ protected:
 	bool can_drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) const;
 	void drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from);
 
+	void update_functions(const ScriptStructure &structure);
+
 public:
 	virtual void apply_code();
 	virtual Ref<Script> get_edited_script() const;
-	virtual Vector<String> get_functions();
+	virtual void get_structure(ScriptStructure &r_structure);
 	virtual void set_edited_script(const Ref<Script> &p_script);
 	virtual void reload_text();
 	virtual String get_name();

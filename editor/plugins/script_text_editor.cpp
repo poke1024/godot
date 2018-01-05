@@ -35,25 +35,29 @@
 #include "editor/script_editor_debugger.h"
 #include "os/keyboard.h"
 
-Vector<String> ScriptTextEditor::get_functions() {
+void ScriptTextEditor::update_functions(const ScriptStructure &structure) {
+
+	functions.clear();
+	for (int i = 0; i < structure.functions.size(); i++) {
+		functions.push_back(structure.functions[i].name + ":" + itos(structure.functions[i].line));
+	}
+	for (int i = 0; i < structure.static_functions.size(); i++) {
+		functions.push_back(structure.static_functions[i].name + ":" + itos(structure.static_functions[i].line));
+	}
+}
+
+void ScriptTextEditor::get_structure(ScriptStructure &r_structure) {
 
 	String errortxt;
 	int line = -1, col;
 	TextEdit *te = code_editor->get_text_edit();
 	String text = te->get_text();
-	List<String> fnc;
 
-	if (script->get_language()->validate(text, line, col, errortxt, script->get_path(), &fnc)) {
+	if (script->get_language()->validate(text, line, col, errortxt, script->get_path(), &r_structure)) {
 
 		//if valid rewrite functions to latest
-		functions.clear();
-		for (List<String>::Element *E = fnc.front(); E; E = E->next()) {
-
-			functions.push_back(E->get());
-		}
+		update_functions(r_structure);
 	}
-
-	return functions;
 }
 
 void ScriptTextEditor::apply_code() {
@@ -552,9 +556,9 @@ void ScriptTextEditor::_validate_script() {
 	TextEdit *te = code_editor->get_text_edit();
 
 	String text = te->get_text();
-	List<String> fnc;
+	ScriptStructure structure;
 
-	if (!script->get_language()->validate(text, line, col, errortxt, script->get_path(), &fnc)) {
+	if (!script->get_language()->validate(text, line, col, errortxt, script->get_path(), &structure)) {
 		String error_text = "error(" + itos(line) + "," + itos(col) + "): " + errortxt;
 		code_editor->set_error(error_text);
 	} else {
@@ -566,11 +570,7 @@ void ScriptTextEditor::_validate_script() {
 			//script->reload(); //will update all the variables in property editors
 		}
 
-		functions.clear();
-		for (List<String>::Element *E = fnc.front(); E; E = E->next()) {
-
-			functions.push_back(E->get());
-		}
+		update_functions(structure);
 	}
 
 	line--;
@@ -1102,7 +1102,9 @@ void ScriptTextEditor::_edit_option(int p_op) {
 		} break;
 		case SEARCH_LOCATE_FUNCTION: {
 
-			quick_open->popup(get_functions());
+			ScriptStructure structure;
+			get_structure(structure);
+			quick_open->popup(functions);
 		} break;
 		case SEARCH_GOTO_LINE: {
 

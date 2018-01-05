@@ -1322,7 +1322,15 @@ void ScriptEditor::ensure_focus_current() {
 	se->ensure_focus();
 }
 
-void ScriptEditor::_members_overview_selected(int p_idx) {
+void ScriptEditor::_members_overview_selected() {
+	TreeItem *selected = members_overview->get_selected();
+	if (!selected) {
+		return;
+	}
+	int line = selected->get_metadata(0);
+	if (line < 0) {
+		return;
+	}
 	Node *current = tab_container->get_child(tab_container->get_current_tab());
 	ScriptEditorBase *se = Object::cast_to<ScriptEditorBase>(current);
 	if (!se) {
@@ -1330,10 +1338,18 @@ void ScriptEditor::_members_overview_selected(int p_idx) {
 	}
 	// Go to the member's line and reset the cursor column. We can't just change scroll_position
 	// directly, since code might be folded.
-	se->goto_line(members_overview->get_item_metadata(p_idx));
+	se->goto_line(line);
 	Dictionary state = se->get_edit_state();
 	state["column"] = 0;
 	se->set_edit_state(state);
+}
+
+void ScriptEditor::_base_type_overview_selected() {
+	TreeItem *selected = base_type_overview->get_selected();
+	if (!selected) {
+		return;
+	}
+	_help_class_open(selected->get_text(0));
 }
 
 void ScriptEditor::_help_overview_selected(int p_idx) {
@@ -1416,18 +1432,129 @@ void ScriptEditor::_update_members_overview_visibility() {
 	ScriptEditorBase *se = Object::cast_to<ScriptEditorBase>(current);
 	if (!se) {
 		members_overview->set_visible(false);
+        base_type_overview->set_visible(false);
 		return;
 	}
 
 	if (members_overview_enabled && se->show_members_overview()) {
 		members_overview->set_visible(true);
+        base_type_overview->set_visible(true);
 	} else {
 		members_overview->set_visible(false);
+        base_type_overview->set_visible(false);
+	}
+}
+
+void ScriptEditor::_insert_script_structure_sep(TreeItem *p_parent, const String &p_name) {
+
+	TreeItem *sep = members_overview->create_item(p_parent);
+
+	sep->set_text(0, p_name);
+	sep->set_expand_right(0, true);
+	sep->set_selectable(0, false);
+	sep->set_custom_bg_color(0, get_color("prop_category", "Editor"));
+	sep->set_disable_folding(true);
+}
+
+void ScriptEditor::_insert_script_structure_base_class(TreeItem *p_parent, const StringName &p_class) {
+
+	DocData *doc = EditorHelp::get_doc_data();
+
+	TreeItem *base_class_item = base_type_overview->create_item(p_parent);
+    base_class_item->set_text(0, p_class);
+
+	if (has_icon(p_class, "EditorIcons"))
+        base_class_item->set_icon(0, get_icon(p_class, "EditorIcons"));
+	else
+        base_class_item->set_icon(0, get_icon("Object", "EditorIcons"));
+
+	if (doc->class_list.has(p_class)) {
+
+		const DocData::ClassDoc &cd = doc->class_list[p_class];
+
+        if (cd.inherits.length() > 0) {
+			_insert_script_structure_base_class(p_parent, cd.inherits);
+		}
+	}
+}
+
+void ScriptEditor::_insert_script_structure(TreeItem *p_parent, const ScriptStructure &p_structure) {
+
+	if (!p_structure.functions.empty()) {
+		TreeItem *functions = members_overview->create_item(p_parent);
+		functions->set_text(0, "Functions:");
+        functions->set_disable_folding(true);
+
+		for (int i = 0; i < p_structure.functions.size(); i++) {
+			TreeItem *child = members_overview->create_item(functions);
+			child->set_text(0, p_structure.functions[i].name);
+			child->set_metadata(0, p_structure.functions[i].line - 1);
+		}
+	}
+
+	if (!p_structure.variables.empty()) {
+		TreeItem *variables = members_overview->create_item(p_parent);
+		variables->set_text(0, "Variables:");
+        variables->set_disable_folding(true);
+
+		for (int i = 0; i < p_structure.variables.size(); i++) {
+			TreeItem *child = members_overview->create_item(variables);
+			child->set_text(0, p_structure.variables[i].name);
+			child->set_metadata(0, p_structure.variables[i].line - 1);
+		}
+	}
+
+	if (!p_structure.signals.empty()) {
+		TreeItem *signals = members_overview->create_item(p_parent);
+		signals->set_text(0, "Signals:");
+        signals->set_disable_folding(true);
+
+		for (int i = 0; i < p_structure.signals.size(); i++) {
+			TreeItem *child = members_overview->create_item(signals);
+			child->set_text(0, p_structure.signals[i].name);
+			child->set_metadata(0, p_structure.signals[i].line - 1);
+		}
+	}
+
+	if (!p_structure.constants.empty()) {
+		TreeItem *constants = members_overview->create_item(p_parent);
+		constants->set_text(0, "Constants:");
+        constants->set_disable_folding(true);
+
+		for (int i = 0; i < p_structure.constants.size(); i++) {
+			TreeItem *child = members_overview->create_item(constants);
+			child->set_text(0, p_structure.constants[i].name);
+			child->set_metadata(0, p_structure.constants[i].line - 1);
+		}
+	}
+
+    if (!p_structure.subclasses.empty()) {
+        TreeItem *classes = members_overview->create_item(p_parent);
+        classes->set_text(0, "Classes:");
+        classes->set_disable_folding(true);
+
+        for (int i = 0; i < p_structure.subclasses.size(); i++) {
+            TreeItem *subclass = members_overview->create_item(classes);
+            subclass->set_text(0, p_structure.subclasses[i].name);
+            subclass->set_metadata(0, p_structure.subclasses[i].line - 1);
+            subclass->set_collapsed(true);
+            _insert_script_structure(subclass, p_structure.subclasses[i]);
+        }
+    }
+
+	if (p_structure.name.length() == 0 && !p_structure.extends.empty()) {
+        TreeItem *root = base_type_overview->create_item();
+        base_type_overview->set_hide_root(true);
+
+		for (int i = 0; i < p_structure.extends.size(); i++) {
+			_insert_script_structure_base_class(root, p_structure.extends[i]);
+		}
 	}
 }
 
 void ScriptEditor::_update_members_overview() {
 	members_overview->clear();
+    base_type_overview->clear();
 
 	int selected = tab_container->get_current_tab();
 	if (selected < 0 || selected >= tab_container->get_child_count())
@@ -1439,11 +1566,13 @@ void ScriptEditor::_update_members_overview() {
 		return;
 	}
 
-	Vector<String> functions = se->get_functions();
-	for (int i = 0; i < functions.size(); i++) {
-		members_overview->add_item(functions[i].get_slice(":", 0));
-		members_overview->set_item_metadata(i, functions[i].get_slice(":", 1).to_int() - 1);
-	}
+	TreeItem *root = members_overview->create_item();
+	members_overview->set_hide_root(true);
+
+	ScriptStructure structure;
+	se->get_structure(structure);
+
+	_insert_script_structure(root, structure);
 }
 
 void ScriptEditor::_update_help_overview_visibility() {
@@ -2512,6 +2641,7 @@ void ScriptEditor::_bind_methods() {
 	ClassDB::bind_method("_update_script_names", &ScriptEditor::_update_script_names);
 	ClassDB::bind_method("_tree_changed", &ScriptEditor::_tree_changed);
 	ClassDB::bind_method("_members_overview_selected", &ScriptEditor::_members_overview_selected);
+	ClassDB::bind_method("_base_type_overview_selected", &ScriptEditor::_base_type_overview_selected);
 	ClassDB::bind_method("_help_overview_selected", &ScriptEditor::_help_overview_selected);
 	ClassDB::bind_method("_script_selected", &ScriptEditor::_script_selected);
 	ClassDB::bind_method("_script_created", &ScriptEditor::_script_created);
@@ -2580,10 +2710,34 @@ ScriptEditor::ScriptEditor(EditorNode *p_editor) {
 	add_child(context_menu);
 	context_menu->connect("id_pressed", this, "_menu_option");
 
-	members_overview = memnew(ItemList);
-	list_split->add_child(members_overview);
-	members_overview->set_custom_minimum_size(Size2(0, 90)); //need to give a bit of limit to avoid it from disappearing
+    VSplitContainer *v_members_overview = memnew(VSplitContainer);
+	list_split->add_child(v_members_overview);
+
+    VBoxContainer *v_members_overview_1 = memnew(VBoxContainer);
+    v_members_overview->add_child(v_members_overview_1);
+    v_members_overview_1->set_v_size_flags(SIZE_EXPAND_FILL);
+
+    Label *members_overview_label = memnew(Label(TTR("Members:")));
+    members_overview_label->set_v_size_flags(SIZE_FILL);
+    v_members_overview_1->add_child(members_overview_label);
+
+	members_overview = memnew(Tree);
+    v_members_overview_1->add_child(members_overview);
+	members_overview->set_custom_minimum_size(Size2(0, 110));
 	members_overview->set_v_size_flags(SIZE_EXPAND_FILL);
+
+    VBoxContainer *v_members_overview_2 = memnew(VBoxContainer);
+    v_members_overview->add_child(v_members_overview_2);
+    v_members_overview_2->set_v_size_flags(SIZE_FILL);
+
+    Label *base_type_overview_label = memnew(Label(TTR("Base Types:")));
+    base_type_overview_label->set_v_size_flags(SIZE_FILL);
+    v_members_overview_2->add_child(base_type_overview_label);
+
+    base_type_overview = memnew(Tree);
+    base_type_overview->set_custom_minimum_size(Size2(0, 60));
+    v_members_overview_2->add_child(base_type_overview);
+    base_type_overview->set_v_size_flags(SIZE_EXPAND_FILL);
 
 	help_overview = memnew(ItemList);
 	list_split->add_child(help_overview);
