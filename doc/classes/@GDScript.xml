@@ -729,20 +729,6 @@
 				[/codeblock]
 			</description>
 		</method>
-		<method name="rand_range">
-			<return type="float">
-			</return>
-			<argument index="0" name="from" type="float">
-			</argument>
-			<argument index="1" name="to" type="float">
-			</argument>
-			<description>
-				Random range, any floating point value between [code]from[/code] and [code]to[/code].
-				[codeblock]
-				prints(rand_range(0, 1), rand_range(0, 1)) # prints 0.135591 0.405263
-				[/codeblock]
-			</description>
-		</method>
 		<method name="rand_seed">
 			<return type="Array">
 			</return>
@@ -756,9 +742,11 @@
 			<return type="float">
 			</return>
 			<description>
-				Returns a random floating point value between 0 and 1.
+				Returns a random floating point value between 0 and 1. Use randf(N) to get a floating point random value between 0 and N. Use randf(M, N) to get a value between M and N.
 				[codeblock]
 				randf() # returns 0.375671
+				randf(10) # returns 1.355914
+				randf(-100, -5) # returns -61.50005
 				[/codeblock]
 			</description>
 		</method>
@@ -766,22 +754,11 @@
 			<return type="int">
 			</return>
 			<description>
-				Returns a random 32 bit integer. Use remainder to obtain a random value between 0 and N (where N is smaller than 2^32 -1).
+				Returns a random 32 bit integer. Use randi(N) to get a random value between 0 and N (where N is smaller than 2^32 -1). Use randi(M, N) to get a value between M and N.
 				[codeblock]
-				randi() % 20      # returns random number between 0 and 19
-				randi() % 100     # returns random number between 0 and 99
-				randi() % 100 + 1 # returns random number between 1 and 100
-				[/codeblock]
-			</description>
-		</method>
-		<method name="randomize">
-			<return type="void">
-			</return>
-			<description>
-				Randomizes the seed (or the internal state) of the random number generator. Current implementation reseeds using a number based on time.
-				[codeblock]
-				func _ready():
-				    randomize()
+				randi() # returns 582360676
+				randi(10) # returns 3
+				randi(100, 1000) # returns 240
 				[/codeblock]
 			</description>
 		</method>
@@ -854,9 +831,17 @@
 			</argument>
 			<description>
 				Sets seed for the random number generator.
+
+				Call without a parameter to randomize the seed (or the internal state) of the random number generator. Current implementation reseeds using a number based on time.
+
 				[codeblock]
 				my_seed = "Godot Rocks"
 				seed(my_seed.hash())
+				[/codeblock]
+
+				[codeblock]
+				func _ready():
+					seed()
 				[/codeblock]
 			</description>
 		</method>

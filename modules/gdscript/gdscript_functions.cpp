@@ -357,28 +357,64 @@ void GDScriptFunctions::call(Function p_func, const Variant **p_args, int p_arg_
 			VALIDATE_ARG_NUM(2);
 			r_ret = Math::dectime((double)*p_args[0], (double)*p_args[1], (double)*p_args[2]);
 		} break;
-		case MATH_RANDOMIZE: {
+		case MATH_RANDOMIZE: { // deprecated
 			Math::randomize();
 			r_ret = Variant();
 		} break;
-		case MATH_RAND: {
-			r_ret = Math::rand();
+		case MATH_RAND: { // i.e. randi
+			if (p_arg_count == 0) {
+				r_ret = Math::rand();
+			} else if (p_arg_count == 1) {
+				VALIDATE_ARG_NUM(0);
+				r_ret = Math::rand() % (int64_t)*p_args[0];
+			} else if (p_arg_count == 2) {
+				VALIDATE_ARG_NUM(0);
+				VALIDATE_ARG_NUM(1);
+				int64_t a = *p_args[0];
+				int64_t b = *p_args[1];
+				r_ret = a + (Math::rand() % (b - a));
+			} else {
+				r_error.error = Variant::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS;
+				r_error.argument = 2;
+				r_ret = Variant();
+			}
 		} break;
-		case MATH_RANDF: {
-			r_ret = Math::randf();
+		case MATH_RANDF: { // i.e. randf
+			if (p_arg_count == 0) {
+				r_ret = Math::randf();
+			} else if (p_arg_count == 1) {
+				VALIDATE_ARG_NUM(0);
+				r_ret = Math::random((double)0, (double)*p_args[0]);
+			} else if (p_arg_count == 2) {
+				VALIDATE_ARG_NUM(0);
+				VALIDATE_ARG_NUM(1);
+				r_ret = Math::random((double)*p_args[0], (double)*p_args[1]);
+			} else {
+				r_error.error = Variant::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS;
+				r_error.argument = 2;
+				r_ret = Variant();
+			}
 		} break;
-		case MATH_RANDOM: {
+		case MATH_RANDOM: { // i.e. rand_range, deprecated
 			VALIDATE_ARG_COUNT(2);
 			VALIDATE_ARG_NUM(0);
 			VALIDATE_ARG_NUM(1);
 			r_ret = Math::random((double)*p_args[0], (double)*p_args[1]);
 		} break;
 		case MATH_SEED: {
-			VALIDATE_ARG_COUNT(1);
-			VALIDATE_ARG_NUM(0);
-			uint64_t seed = *p_args[0];
-			Math::seed(seed);
-			r_ret = Variant();
+			if (p_arg_count == 0) {
+				Math::randomize();
+				r_ret = Variant();
+			} else if (p_arg_count == 1) {
+				VALIDATE_ARG_NUM(0);
+				uint64_t seed = *p_args[0];
+				Math::seed(seed);
+				r_ret = Variant();
+			} else {
+				r_error.error = Variant::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS;
+				r_error.argument = 1;
+				r_ret = Variant();
+			}
 		} break;
 		case MATH_RANDSEED: {
 			VALIDATE_ARG_COUNT(1);
@@ -1497,11 +1533,6 @@ MethodInfo GDScriptFunctions::get_info(Function p_func) {
 			mi.return_val.type = Variant::REAL;
 			return mi;
 		} break;
-		case MATH_RANDOMIZE: {
-			MethodInfo mi("randomize");
-			mi.return_val.type = Variant::NIL;
-			return mi;
-		} break;
 		case MATH_RAND: {
 			MethodInfo mi("randi");
 			mi.return_val.type = Variant::INT;
@@ -1510,16 +1541,13 @@ MethodInfo GDScriptFunctions::get_info(Function p_func) {
 		case MATH_RANDF: {
 			MethodInfo mi("randf");
 			mi.return_val.type = Variant::REAL;
-			return mi;
-		} break;
-		case MATH_RANDOM: {
-			MethodInfo mi("rand_range", PropertyInfo(Variant::REAL, "from"), PropertyInfo(Variant::REAL, "to"));
-			mi.return_val.type = Variant::REAL;
+			mi.flags |= METHOD_FLAG_VARARG;
 			return mi;
 		} break;
 		case MATH_SEED: {
 			MethodInfo mi("seed", PropertyInfo(Variant::INT, "seed"));
 			mi.return_val.type = Variant::NIL;
+			mi.flags |= METHOD_FLAG_VARARG;
 			return mi;
 		} break;
 		case MATH_RANDSEED: {
