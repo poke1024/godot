@@ -1581,7 +1581,11 @@ void RasterizerCanvasGLES3::reset_canvas() {
 	state.canvas_item_ubo_data.time = storage->frame.time[0];
 
 	glBindBuffer(GL_UNIFORM_BUFFER, state.canvas_item_ubo);
+#ifdef OSX_ENABLED // on macOS, using glBufferSubData here can trigger random crashes in glSwap_Exec()
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(CanvasItemUBO), &state.canvas_item_ubo_data, GL_DYNAMIC_DRAW);
+#else
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CanvasItemUBO), &state.canvas_item_ubo_data);
+#endif
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	state.canvas_texscreen_used = false;
