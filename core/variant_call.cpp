@@ -1019,6 +1019,16 @@ void Variant::call_ptr(const StringName &p_method, const Variant **p_args, int p
 		r_error.error = Variant::CallError::CALL_OK;
 
 		Map<StringName, _VariantCall::FuncData>::Element *E = _VariantCall::type_funcs[type].functions.find(p_method);
+		if (!E) {
+			Ref<Script> script;
+			ClassDB::get_method_or_extension(get_type_name(get_type()), p_method, script); // FIXME StringName
+			if (!script.is_null()) {
+				Variant ret = script->call_as_extension(*this, p_method, p_args, p_argcount, r_error);
+				if (r_error.error == Variant::CallError::CALL_OK && r_ret)
+					*r_ret = ret;
+				return;
+			}
+		}
 #ifdef DEBUG_ENABLED
 		if (!E) {
 			r_error.error = Variant::CallError::CALL_ERROR_INVALID_METHOD;

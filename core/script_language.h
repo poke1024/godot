@@ -107,6 +107,7 @@ public:
 	virtual MethodInfo get_method_info(const StringName &p_method) const = 0;
 
 	virtual bool is_tool() const = 0;
+	virtual bool is_extension() const = 0;
 
 	virtual ScriptLanguage *get_language() const = 0;
 
@@ -123,6 +124,9 @@ public:
 
 	virtual void get_constants(Map<StringName, Variant> *p_constants) {}
 	virtual void get_members(Set<StringName> *p_constants) {}
+
+	virtual bool has_extension_method(const StringName &p_method) const { return false; }
+	virtual Variant call_as_extension(const Variant &p_instance, const StringName &p_method, const Variant **p_args, int p_argcount, Variant::CallError &r_error) { return Variant(); }
 
 	Script() {}
 };

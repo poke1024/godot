@@ -39,6 +39,8 @@
 #include "scene/main/node.h"
 #include "variant_parser.h"
 
+static Vector<Ref<Script> > extensions[Variant::VARIANT_MAX];
+
 String Variant::get_type_name(Variant::Type p_type) {
 
 	switch (p_type) {

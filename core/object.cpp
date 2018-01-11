@@ -32,6 +32,7 @@
 
 #include "class_db.h"
 #include "core_string_names.h"
+#include "func_ref.h"
 #include "message_queue.h"
 #include "os/os.h"
 #include "print_string.h"
@@ -907,12 +908,17 @@ Variant Object::call(const StringName &p_method, const Variant **p_args, int p_a
 		}
 	}
 
-	MethodBind *method = ClassDB::get_method(get_class_name(), p_method);
+	Ref<Script> extension;
+	MethodBind *method = ClassDB::get_method_or_extension(get_class_name(), p_method, extension);
 
 	if (method) {
 
 		ret = method->call(this, p_args, p_argcount, r_error);
+	} else if (!extension.is_null()) {
+
+		ret = extension->call_as_extension(Variant(this), p_method, p_args, p_argcount, r_error);
 	} else {
+
 		r_error.error = Variant::CallError::CALL_ERROR_INVALID_METHOD;
 	}
 

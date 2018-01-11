@@ -31,6 +31,7 @@
 #include "class_db.h"
 
 #include "os/mutex.h"
+#include "script_language.h"
 #include "version.h"
 
 #ifdef NO_THREADS
@@ -587,6 +588,15 @@ void ClassDB::get_method_list(StringName p_class, List<MethodInfo> *p_methods, b
 	}
 }
 
+void ClassDB::add_extension(const StringName &p_class, const Ref<Script> &p_script) {
+
+	OBJTYPE_WLOCK;
+	
+	ClassInfo *type = classes.getptr(p_class);
+	if (type)
+		type->extension_scripts.push_back(p_script);
+}
+
 MethodBind *ClassDB::get_method(StringName p_class, StringName p_name) {
 
 	OBJTYPE_RLOCK;
@@ -600,6 +610,32 @@ MethodBind *ClassDB::get_method(StringName p_class, StringName p_name) {
 			return *method;
 		type = type->inherits_ptr;
 	}
+	return NULL;
+}
+
+MethodBind *ClassDB::get_method_or_extension(const StringName &p_class, const StringName &p_name, Ref<Script> &r_script) {
+
+	OBJTYPE_RLOCK;
+
+	ClassInfo *type = classes.getptr(p_class);
+
+	while (type) {
+
+		MethodBind **method = type->method_map.getptr(p_name);
+		if (method && *method)
+			return *method;
+
+		for (int i = 0; i < type->extension_scripts.size(); i++) {
+			const Ref<Script> &script = type->extension_scripts[i];
+			if (!script.is_null() && script->has_extension_method(p_name)) {
+				r_script = script;
+				return NULL;
+			}
+		}
+
+		type = type->inherits_ptr;
+	}
+
 	return NULL;
 }
 

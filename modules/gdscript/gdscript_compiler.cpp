@@ -201,7 +201,16 @@ int GDScriptCompiler::_parse_expression(CodeGen &codegen, const GDScriptParser::
 				return pos | (GDScriptFunction::ADDR_TYPE_STACK_VARIABLE << GDScriptFunction::ADDR_BITS);
 			}
 			//TRY MEMBERS!
-			if (!codegen.function_node || !codegen.function_node->_static) {
+			if (codegen.function_node->_extension) {
+
+				codegen.opcodes.push_back(GDScriptFunction::OPCODE_GET_NAMED);
+				codegen.opcodes.push_back(GDScriptFunction::ADDR_TYPE_SELF << GDScriptFunction::ADDR_BITS);
+				codegen.opcodes.push_back(codegen.get_name_map_pos(identifier));
+				int dst_addr = (p_stack_level) | (GDScriptFunction::ADDR_TYPE_STACK << GDScriptFunction::ADDR_BITS);
+				codegen.opcodes.push_back(dst_addr);
+				codegen.alloc_stack(p_stack_level);
+				return dst_addr;
+			} else if (!codegen.function_node || !codegen.function_node->_static) {
 
 				// TRY MEMBER VARIABLES!
 				//static function
@@ -1606,6 +1615,7 @@ Error GDScriptCompiler::_parse_class(GDScript *p_script, GDScript *p_owner, cons
 	p_script->subclasses.clear();
 	p_script->_owner = p_owner;
 	p_script->tool = p_class->tool;
+	p_script->extension = p_class->extension;
 	p_script->name = p_class->name;
 
 	Ref<GDScriptNativeClass> native;

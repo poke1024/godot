@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2018 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2018 Godot Engine contributors (cf. AUTHORS.md)    */
+/* Copyright (c) 2007-2017 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2017 Godot Engine contributors (cf. AUTHORS.md)    */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -27,7 +27,6 @@
 /* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
-
 #ifndef GDSCRIPT_PARSER_H
 #define GDSCRIPT_PARSER_H
 
@@ -74,6 +73,7 @@ public:
 	struct ClassNode : public Node {
 
 		bool tool;
+		bool extension;
 		StringName name;
 		bool extends_used;
 		StringName extends_file;
@@ -115,6 +115,7 @@ public:
 
 		ClassNode() {
 			tool = false;
+			extension = false;
 			type = TYPE_CLASS;
 			extends_used = false;
 			end_line = -1;
@@ -125,6 +126,7 @@ public:
 	struct FunctionNode : public Node {
 
 		bool _static;
+		bool _extension;
 		ScriptInstance::RPCMode rpc_mode;
 		StringName name;
 		Vector<StringName> arguments;
@@ -134,6 +136,7 @@ public:
 		FunctionNode() {
 			type = TYPE_FUNCTION;
 			_static = false;
+			_extension = false;
 			rpc_mode = ScriptInstance::RPC_MODE_DISABLED;
 		}
 	};
@@ -252,6 +255,7 @@ public:
 			OP_SHIFT_RIGHT,
 			OP_INIT_ASSIGN,
 			OP_ASSIGN,
+			OP_UNPACK,
 			OP_ASSIGN_ADD,
 			OP_ASSIGN_SUB,
 			OP_ASSIGN_MUL,
@@ -338,6 +342,10 @@ public:
 			body = NULL;
 			body_else = NULL;
 		}
+	};
+
+	struct ForNode : public ControlFlowNode {
+		Vector<IdentifierNode *> ids;
 	};
 
 	struct AssertNode : public Node {
@@ -504,6 +512,7 @@ private:
 	Node *_parse_expression(Node *p_parent, bool p_static, bool p_allow_assign = false, bool p_parsing_constant = false);
 	Node *_reduce_expression(Node *p_node, bool p_to_const = false);
 	Node *_parse_and_reduce_expression(Node *p_parent, bool p_static, bool p_reduce_const = false, bool p_allow_assign = false);
+	Vector<Node *> _parse_and_reduce_expression_list(Node *p_parent, bool p_static, bool p_reduce_const = false, bool p_allow_assign = false);
 
 	PatternNode *_parse_pattern(bool p_static);
 	void _parse_pattern_block(BlockNode *p_block, Vector<PatternBranchNode *> &p_branches, bool p_static);

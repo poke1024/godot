@@ -31,6 +31,7 @@
 #include "gdscript.h"
 
 #include "engine.h"
+#include "func_ref.h"
 #include "gdscript_compiler.h"
 #include "global_constants.h"
 #include "io/file_access_encrypted.h"
@@ -61,6 +62,7 @@ bool GDScriptNativeClass::_get(const StringName &p_name, Variant &r_ret) const {
 void GDScriptNativeClass::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("new"), &GDScriptNativeClass::_new);
+	ClassDB::bind_method(D_METHOD("extend", "script"), &GDScriptNativeClass::_extend);
 }
 
 Variant GDScriptNativeClass::_new() {
@@ -82,6 +84,14 @@ Variant GDScriptNativeClass::_new() {
 Object *GDScriptNativeClass::instance() {
 
 	return ClassDB::instance(name);
+}
+
+Variant GDScriptNativeClass::_extend(const Ref<Script> &p_script) {
+
+	ERR_FAIL_COND_V (!p_script->is_extension(), Variant());
+
+	ClassDB::add_extension(name, p_script);
+	return Variant();
 }
 
 GDScriptInstance *GDScript::_create_instance(const Variant **p_args, int p_argcount, Object *p_owner, bool p_isref, Variant::CallError &r_error) {
@@ -633,6 +643,25 @@ void GDScript::get_members(Set<StringName> *p_members) {
 	}
 }
 
+bool GDScript::has_extension_method(const StringName &p_method) const {
+
+	return has_method(p_method);
+}
+
+Variant GDScript::call_as_extension(const Variant &p_instance, const StringName &p_method, const Variant **p_args, int p_argcount, Variant::CallError &r_error) {
+
+	GDScript *top = this;
+	Map<StringName, GDScriptFunction *>::Element *E = top->member_functions.find(p_method);
+	if (E) {
+
+		GDScriptFunction::CallState state;
+		state.instance = NULL;
+		state.self = p_instance;
+		return E->get()->call(NULL, p_args, p_argcount, r_error, &state);
+	}
+	return Variant();
+}
+
 Variant GDScript::call(const StringName &p_method, const Variant **p_args, int p_argcount, Variant::CallError &r_error) {
 
 	GDScript *top = this;
@@ -887,6 +916,7 @@ GDScript::GDScript() :
 	_base = NULL;
 	_owner = NULL;
 	tool = false;
+	extension = false;
 #ifdef TOOLS_ENABLED
 	source_changed_cache = false;
 #endif
@@ -1737,6 +1767,7 @@ void GDScriptLanguage::get_reserved_words(List<String> *p_words) const {
 		"setget",
 		"signal",
 		"tool",
+		"extension",
 		"yield",
 		// var
 		"const",

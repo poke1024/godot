@@ -566,30 +566,41 @@ GDScriptParser::Node *GDScriptParser::_parse_expression(Node *p_parent, bool p_s
 			expr = self;
 		} else if (tokenizer->get_token() == GDScriptTokenizer::TK_BUILT_IN_TYPE && tokenizer->get_token(1) == GDScriptTokenizer::TK_PERIOD) {
 
-			Variant::Type bi_type = tokenizer->get_token_type();
-			tokenizer->advance(2);
+			if (tokenizer->get_token_identifier(2) == "extend") {
 
-			StringName identifier;
+				IdentifierNode *id = alloc_node<IdentifierNode>();
+				id->name = tokenizer->get_token_literal();
+				expr = id;
 
-			if (_get_completable_identifier(COMPLETION_BUILT_IN_TYPE_CONSTANT, identifier)) {
+				tokenizer->advance(1);
 
-				completion_built_in_constant = bi_type;
+			} else {
+
+				Variant::Type bi_type = tokenizer->get_token_type();
+				tokenizer->advance(2);
+
+				StringName identifier;
+
+				if (_get_completable_identifier(COMPLETION_BUILT_IN_TYPE_CONSTANT, identifier)) {
+
+					completion_built_in_constant = bi_type;
+				}
+
+				if (identifier == StringName()) {
+
+					_set_error("Built-in type constant expected after '.'");
+					return NULL;
+				}
+				if (!Variant::has_numeric_constant(bi_type, identifier)) {
+
+					_set_error("Static constant  '" + identifier.operator String() + "' not present in built-in type " + Variant::get_type_name(bi_type) + ".");
+					return NULL;
+				}
+
+				ConstantNode *cn = alloc_node<ConstantNode>();
+				cn->value = Variant::get_numeric_constant_value(bi_type, identifier);
+				expr = cn;
 			}
-
-			if (identifier == StringName()) {
-
-				_set_error("Built-in type constant expected after '.'");
-				return NULL;
-			}
-			if (!Variant::has_numeric_constant(bi_type, identifier)) {
-
-				_set_error("Static constant  '" + identifier.operator String() + "' not present in built-in type " + Variant::get_type_name(bi_type) + ".");
-				return NULL;
-			}
-
-			ConstantNode *cn = alloc_node<ConstantNode>();
-			cn->value = Variant::get_numeric_constant_value(bi_type, identifier);
-			expr = cn;
 
 		} else if (tokenizer->get_token(1) == GDScriptTokenizer::TK_PARENTHESIS_OPEN && tokenizer->is_token_literal()) {
 			// We check with is_token_literal, as this allows us to use match/sync/etc. as a name
@@ -3086,6 +3097,17 @@ void GDScriptParser::_parse_class(ClassNode *p_class) {
 				tokenizer->advance();
 
 			} break;
+			case GDScriptTokenizer::TK_PR_EXTENSION: {
+
+				if (p_class->extension) {
+
+					_set_error("extension used more than once");
+					return;
+				}
+
+				p_class->extension = true;
+				tokenizer->advance();
+			} break;
 			case GDScriptTokenizer::TK_PR_CLASS: {
 				//class inside class :D
 
@@ -3332,6 +3354,7 @@ void GDScriptParser::_parse_class(ClassNode *p_class) {
 				function->arguments = arguments;
 				function->default_values = default_values;
 				function->_static = _static;
+				function->_extension = p_class->extension;
 				function->line = fnline;
 
 				function->rpc_mode = rpc_mode;
@@ -3993,6 +4016,12 @@ void GDScriptParser::_parse_class(ClassNode *p_class) {
 			} break;
 			case GDScriptTokenizer::TK_PR_VAR: {
 				//variale declaration and (eventual) initialization
+
+				if (p_class->extension) {
+
+					_set_error("Member variables are not allowed in extension scripts.");
+					return;
+				}
 
 				ClassNode::Member member;
 				bool autoexport = tokenizer->get_token(-1) == GDScriptTokenizer::TK_PR_EXPORT;

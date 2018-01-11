@@ -50,6 +50,7 @@ public:
 	_FORCE_INLINE_ const StringName &get_name() const { return name; }
 	Variant _new();
 	Object *instance();
+	Variant _extend(const Ref<Script> &p_script);
 	GDScriptNativeClass(const StringName &p_name);
 };
 
@@ -57,6 +58,7 @@ class GDScript : public Script {
 
 	GDCLASS(GDScript, Script);
 	bool tool;
+	bool extension;
 	bool valid;
 
 	struct MemberInfo {
@@ -152,6 +154,7 @@ public:
 	virtual void get_script_signal_list(List<MethodInfo> *r_signals) const;
 
 	bool is_tool() const { return tool; }
+	bool is_extension() const { return extension; }
 	Ref<GDScript> get_base() const;
 
 	const Map<StringName, MemberInfo> &debug_get_member_indices() const { return member_indices; }
@@ -201,6 +204,9 @@ public:
 
 	virtual void get_constants(Map<StringName, Variant> *p_constants);
 	virtual void get_members(Set<StringName> *p_members);
+
+	virtual bool has_extension_method(const StringName &p_method) const;
+	virtual Variant call_as_extension(const Variant &p_instance, const StringName &p_method, const Variant **p_args, int p_argcount, Variant::CallError &r_error);
 
 	GDScript();
 	~GDScript();

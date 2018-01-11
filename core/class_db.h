@@ -35,6 +35,11 @@
 #include "object.h"
 #include "print_string.h"
 
+template <class T>
+class Ref;
+
+class Script;
+
 /**
 	@author Juan Linietsky <reduzio@gmail.com>
 */
@@ -113,6 +118,7 @@ public:
 		APIType api;
 		ClassInfo *inherits_ptr;
 		HashMap<StringName, MethodBind *, StringNameHasher> method_map;
+		Vector<Ref<Script> > extension_scripts;
 		HashMap<StringName, int, StringNameHasher> constant_map;
 		HashMap<StringName, MethodInfo, StringNameHasher> signal_map;
 		List<PropertyInfo> property_list;
@@ -337,6 +343,9 @@ public:
 
 	static void add_virtual_method(const StringName &p_class, const MethodInfo &p_method, bool p_virtual = true);
 	static void get_virtual_methods(const StringName &p_class, List<MethodInfo> *p_methods, bool p_no_inheritance = false);
+
+	static void add_extension(const StringName &p_class, const Ref<Script> &p_script);
+	static MethodBind *get_method_or_extension(const StringName &p_class, const StringName &p_method, Ref<Script> &r_script);
 
 	static void bind_integer_constant(const StringName &p_class, const StringName &p_enum, const StringName &p_name, int p_constant);
 	static void get_integer_constant_list(const StringName &p_class, List<String> *p_constants, bool p_no_inheritance = false);
